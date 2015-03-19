@@ -1,0 +1,163 @@
+#lang racket
+
+(define nil '())
+
+(define (element-of-unordered-set? x unordered-set)
+  (cond ((null? unordered-set) false)
+        ((equal? x (car unordered-set)) true)
+        (else (element-of-unordered-set? x (cdr unordered-set)))))
+
+(define (adjoin-unordered-set x unordered-set)
+  (if (element-of-unordered-set? x unordered-set)
+    unordered-set
+    (cons x unordered-set)))
+
+(define (intersection-unordered-set set1 set2)
+  (cond ((or (null? set1) (null? set2)) nil)
+        ((element-of-unordered-set? (car set1) set2)
+         (cons (car set1)
+               (intersection-unordered-set (cdr set1) set2)))
+        (else (intersection-unordered-set (cdr set1) set2))))
+
+(define (union-unordered-set set1 set2)
+  (cond ((null? set1) set2)
+        ((null? set2) set1)
+        ((element-of-unordered-set? (car set1) set2)
+         (union-unordered-set (cdr set1) set2))
+        (else (cons (car set1) (union-unordered-set (cdr set1) set2)))))
+(define x '(1 4 3 2 5 8 9))
+(define y '(3 7 2 4 10 11 9))
+(element-of-unordered-set? 7 x)
+(element-of-unordered-set? 7 y)
+(adjoin-unordered-set 11 y)
+y
+(adjoin-unordered-set 12 y)
+y
+x
+(union-unordered-set x y)
+
+(define (element-of-unordered-multi-set? x set1)
+  (element-of-unordered-set? x set1))
+(define (multi-adjoin-unordered-multi-set x set1)
+  (cons x set1))
+(define (multi-union-unordered-multi-set set1 set2)
+  (append set1 set2))
+(define (multi-intersection-unordered-set set1 set2)
+  (intersection-unordered-set set1 set2))
+
+
+(define (element-of-set? x set)
+  (cond ((null? set) false)
+        ((= x (car set)) true)
+        ((< x (car set)) false)
+        (else element-of-set? x (cdr set))))
+(define (intersection-set set1 set2)
+  (if (or (null? set1) (null? set2))
+    nil
+    (let ((x1 (car set1)) (x2 (car set2)))
+      (cond ((= x1 x2) (cons x1
+                             (intersection-set (cdr set1) (cdr set2))))
+            ((< x1 x2) (intersection-set (cdr set1) set2))
+            ((> x1 x2) (intersection-set set1 (cdr set2)))))))
+(define (adjoin-set x set1)
+  (cond ((null? set1) (list x))
+        ((< x (car set1)) (cons x set1))
+        ((= x (car set1)) set1)
+        ((> x (car set1)) (cons (car set1)
+                                (adjoin-set x (cdr set1))))))
+(define (union-set set1 set2)
+  (cond ((null? set1) set2)
+        ((null? set2) set1)
+        (else 
+          (let ((x1 (car set1)) (x2 (car set2)))
+            (cond ((= x1 x2) (cons x1
+                                   (union-set (cdr set1) (cdr set2))))
+                  ((> x1 x2) (cons x2
+                                   (union-set set1 (cdr set2))))
+                  ((< x1 x2) (cons x1
+                                   (union-set (cdr set1) set2))))))))
+
+(define (entry tree) (car tree))
+(define (left-branch tree) (cadr tree))
+(define (right-branch tree) (caddr tree))
+(define (make-tree entry left right)
+  (list entry left right))
+
+(define (element-of-tree-set? x set)
+  (cond ((null? set) false)
+        ((= x (entry set)) true)
+        ((< x (entry set))
+         (element-of-set? x (left-branch set)))
+        ((> x (entry set))
+         (element-of-set? x (right-branch set)))))
+(define (adjoin-tree-set x set)
+  (cond ((null? set) (make-tree x '() '()))
+        ((= x (entry set)) set)
+        ((< x (entry set))
+         (make-tree (entry set)
+                    (adjoin-tree-set x (left-branch set))
+                    (right-branch set)))
+        ((> x (entry set))
+         (make-tree (entry set)
+                    (left-branch set)
+                    (adjoin-tree-set x (right-branch set))))))
+
+(define (tree->list tree)
+  (define (copy-to-list tree result-list)
+    (if (null? tree)
+      result-list
+      (copy-to-list (left-branch tree)
+                    (cons (entry tree)
+                          (copy-to-list (right-branch tree)
+                                        result-list)))))
+  (copy-to-list tree '()))
+
+(define (partial-tree elts n)
+  (if (= n 0)
+    (cons '() elts)
+    (let ((left-size (quotient (- n 1) 2)))
+      (let ((left-result (partial-tree elts left-size)))
+        (let ((left-tree (car left-result))
+              (non-left-elts (cdr left-result))
+              (right-size (- n (+ left-size 1))))
+          (let ((this-entry (car non-left-elts))
+                (right-result (partial-tree (cdr non-left-elts)
+                                            right-size)))
+            (let ((right-tree (car right-result))
+                  (remaining-elts (cdr right-result)))
+              (cons (make-tree this-entry left-tree right-tree)
+                    remaining-elts))))))))
+(define (list->tree elements)
+  (car (partial-tree elements (length elements))))
+
+(define (union-tree-set set1 set2)
+  (list->tree (union-set (tree->list set1)
+                         (tree->list set2))))
+(define (intersection-tree-set set1 set2)
+  (list->tree (intersection-set (tree->list set1)
+                                (tree->list set2))))
+
+(define (lookup key records)
+  (cond ((null? records) false)
+        ((equal? key (entry records)) (entry records))
+        ((> key (entry records)) (lookup key (right-branch records)))
+        ((< key (entry records)) (lookup key (left-branch records)))))
+
+(define ll '(2 3 6 7 10 20))
+(define ll2 '(1 4 6 7 11 12))
+ll
+ll2
+(adjoin-set 3 ll)
+(adjoin-set 0 ll)
+(adjoin-set 7 ll)
+(adjoin-set 12 ll)
+(intersection-set ll (adjoin-set 12 ll))
+(union-set ll (adjoin-set 12 ll))
+(define tl (list->tree ll))
+(define tl2(list->tree ll2))
+(union-tree-set tl tl2)
+(tree->list (union-tree-set tl tl2))
+
+(intersection-tree-set tl tl2)
+(tree->list (intersection-tree-set tl tl2))
+
