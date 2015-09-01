@@ -39,6 +39,33 @@
                  (lambda (x) call-the-cops)))))
   dispatch))
 
+(define (make-joint acc pin new-pin)
+
+
+
+(define (random-in-range low high)
+  (let ((range (- high low)))
+    (+ low (random range))))
+(define (sq num)
+  (* num num))
+
+(define (estimate-integral P x1 x2 y1 y2 trials)
+  (define (counter tt)
+    (cond ((= tt 0) 0)
+          ((P (random-in-range x1 x2) (random-in-range y1 y2)) (+ 1 (counter (- tt 1))))
+          (else (counter (- tt 1)))))
+  (define area (* 1.0 (- x2 x1) (- y2 y1)))
+  (define ratio (/ (* 1.0 (counter trials)) trials))
+  (* area ratio))
+
+
+(define (ppp x y)
+  (<= (+ (sq x) (sq y)) 1.0))
+(estimate-integral ppp -1 1 -1 1 100000000)
+
+
+
+
 (define (make-accumulator cur)
   (lambda (num)
     (begin (set! cur (+ cur num))
